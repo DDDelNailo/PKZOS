@@ -13,8 +13,8 @@ class LoggerApp(BaseApp):
     def __init__(self, kernel: "Kernel", namespace: str) -> None:
         super().__init__(kernel, namespace, title="Logger")
         self.lines: List[str] = []
-        self.font = pygame.font.Font(None, 24)
-        self.bg: Tuple[int, int, int] = (40, 40, 40)
+        self.font = pygame.font.Font("fonts/DMMono.ttf", 16)
+        self.bg: Tuple[int, int, int] = (0, 0, 0)
 
     def listen(self, data: dict[str, Any]) -> None:
         t = data.get("type")

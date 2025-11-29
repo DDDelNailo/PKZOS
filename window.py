@@ -201,6 +201,6 @@ class Window:
             self.surface.blit(err, (8, 8))
 
         # Border
-        pygame.draw.rect(surface, (0, 0, 0), self.rect, BORDER)
+        pygame.draw.rect(surface, (20, 20, 20), self.rect, BORDER)
 
         surface.blit(self.surface, self.content_rect)

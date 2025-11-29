@@ -48,8 +48,12 @@ def main(app: str) -> None:
                 running = False
                 break
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    kernel.launch_app("counter", size=(400, 300), pos=(80, 80))
+                if event.key == pygame.K_F1:
+                    kernel.launch_app("counter", size=(400, 300), pos=(20, 20))
+                elif event.key == pygame.K_F2:
+                    kernel.launch_app(
+                        "terminal", size=(800, 500), pos=(SCREEN_SIZE[0] - 800 - 20, 20)
+                    )
 
             kernel.handle_event(event)
 

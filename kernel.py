@@ -8,6 +8,7 @@ from typing import TypedDict, Type, List, Tuple, Optional, Any, Dict
 
 from apps.logger import LoggerApp
 from apps.counter import CounterApp
+from apps.terminal import TerminalApp
 
 
 class AppRegistry(TypedDict):
@@ -26,6 +27,7 @@ class Kernel:
         self.app_registry: dict[str, AppRegistry] = {
             "counter": {"app": CounterApp, "running": [], "message_queue": []},
             "logger": {"app": LoggerApp, "running": [], "message_queue": []},
+            "terminal": {"app": TerminalApp, "running": [], "message_queue": []},
         }
 
     def launch_app(
