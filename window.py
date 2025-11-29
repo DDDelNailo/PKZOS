@@ -2,16 +2,17 @@ import pygame
 from app_base import BaseApp
 from typing import Tuple, Optional
 
-TITLEBAR_HEIGHT = 28
-BORDER = 2
-FONT_SIZE = 18
-BTN_SIZE = 16
-BTN_PADDING = 6
+from constants import TITLEBAR_HEIGHT, BORDER, FONT_SIZE
 
 
 class Window:
     def __init__(
-        self, id: int, app: BaseApp, rect: pygame.Rect, title: Optional[str] = None
+        self,
+        id: int,
+        app: BaseApp,
+        rect: pygame.Rect,
+        title: Optional[str] = None,
+        embedded: bool = False,
     ) -> None:
         self.id = id
         self.app = app
@@ -22,31 +23,50 @@ class Window:
         self.drag_offset = (0, 0)
         self.active = False
         self.visible = True
+        self.embedded = embedded
 
         self.restore_pos = self.rect.topleft
         self.restore_size = self.rect.size
         self.maximized = False
 
         self.font = pygame.font.Font("fonts/TikTokSans.ttf", FONT_SIZE)
-        self.surface = pygame.Surface(
-            (rect.w - BORDER * 2, rect.h - TITLEBAR_HEIGHT - BORDER)
-        )
+        if embedded:
+            self.surface = pygame.Surface((rect.w - BORDER * 2, rect.h - BORDER * 2))
+        else:
+            self.surface = pygame.Surface(
+                (rect.w - BORDER * 2, rect.h - TITLEBAR_HEIGHT - BORDER * 2)
+            )
 
-        self.btn_close_rect = pygame.Rect(0, 0, BTN_SIZE, BTN_SIZE)
-        self.btn_max_rect = pygame.Rect(0, 0, BTN_SIZE, BTN_SIZE)
-        self.btn_min_rect = pygame.Rect(0, 0, BTN_SIZE, BTN_SIZE)
+        self.btn_close_rect = pygame.Rect(
+            0, 0, TITLEBAR_HEIGHT - BORDER, TITLEBAR_HEIGHT - BORDER
+        )
+        self.btn_max_rect = pygame.Rect(
+            0, 0, TITLEBAR_HEIGHT - BORDER, TITLEBAR_HEIGHT - BORDER
+        )
+        self.btn_min_rect = pygame.Rect(
+            0, 0, TITLEBAR_HEIGHT - BORDER, TITLEBAR_HEIGHT - BORDER
+        )
 
     @property
     def titlebar_rect(self):
+        if self.embedded:
+            return pygame.Rect(0, 0, 0, 0)
         return pygame.Rect(self.rect.x, self.rect.y, self.rect.w, TITLEBAR_HEIGHT)
 
     @property
     def content_rect(self):
+        if self.embedded:
+            return pygame.Rect(
+                self.rect.x + BORDER,
+                self.rect.y + BORDER,
+                self.rect.w - BORDER * 2,
+                self.rect.h - BORDER,
+            )
         return pygame.Rect(
             self.rect.x + BORDER,
             self.rect.y + TITLEBAR_HEIGHT,
             self.rect.w - BORDER * 2,
-            self.rect.h - TITLEBAR_HEIGHT - BORDER,
+            self.rect.h - BORDER - TITLEBAR_HEIGHT,
         )
 
     def toggle_maximize(self):
@@ -126,9 +146,17 @@ class Window:
                 self.rect.w - BORDER * 2,
                 self.rect.h - TITLEBAR_HEIGHT - BORDER,
             ):
-                self.surface = pygame.Surface(
-                    (self.rect.w - BORDER * 2, self.rect.h - TITLEBAR_HEIGHT - BORDER)
-                )
+                if self.embedded:
+                    self.surface = pygame.Surface(
+                        (self.rect.w - BORDER * 2, self.rect.h - BORDER * 2)
+                    )
+                else:
+                    self.surface = pygame.Surface(
+                        (
+                            self.rect.w - BORDER * 2,
+                            self.rect.h - TITLEBAR_HEIGHT - BORDER * 2,
+                        )
+                    )
             self.app.update(dt)
         except Exception as e:
             print(f"[window] app.update error in {self.id}: {e}")
@@ -137,34 +165,33 @@ class Window:
         if not self.visible:
             return
 
-        pygame.draw.rect(surface, (30, 30, 30), self.rect)
+        if not self.embedded:
+            # Title bar
+            if not self.embedded:
+                titlebar = self.titlebar_rect
+                title_color = (50, 120, 200) if self.active else (100, 100, 100)
+                pygame.draw.rect(surface, title_color, titlebar)
 
-        titlebar = self.titlebar_rect
-        title_color = (50, 120, 200) if self.active else (100, 100, 100)
-        pygame.draw.rect(surface, title_color, titlebar)
+            # Title text
+            title_surf = self.font.render(self.title, True, (255, 255, 255))
+            title_x = self.rect.x + (self.rect.w - title_surf.get_width()) // 2
+            title_y = self.rect.y + (TITLEBAR_HEIGHT - title_surf.get_height()) // 2
+            surface.blit(title_surf, (title_x, title_y))
 
-        # Border
-        pygame.draw.rect(surface, (0, 0, 0), self.rect, BORDER)
+            # Buttons
+            x = self.rect.right - (TITLEBAR_HEIGHT)
+            y = self.rect.y + BORDER
+            self.btn_close_rect.topleft = (x, y)
 
-        # Title text
-        title_surf = self.font.render(self.title, True, (255, 255, 255))
-        title_x = self.rect.x + (self.rect.w - title_surf.get_width()) // 2
-        title_y = self.rect.y + (TITLEBAR_HEIGHT - title_surf.get_height()) // 2
-        surface.blit(title_surf, (title_x, title_y))
+            x -= TITLEBAR_HEIGHT - BORDER
+            self.btn_max_rect.topleft = (x, y)
 
-        # Buttons
-        x = self.rect.right - (BTN_SIZE + BTN_PADDING)
-        self.btn_close_rect.topleft = (x, self.rect.y + BTN_PADDING)
+            x -= TITLEBAR_HEIGHT - BORDER
+            self.btn_min_rect.topleft = (x, y)
 
-        x -= BTN_SIZE + BTN_PADDING
-        self.btn_max_rect.topleft = (x, self.rect.y + BTN_PADDING)
-
-        x -= BTN_SIZE + BTN_PADDING
-        self.btn_min_rect.topleft = (x, self.rect.y + BTN_PADDING)
-
-        pygame.draw.rect(surface, (200, 80, 80), self.btn_close_rect)
-        pygame.draw.rect(surface, (200, 200, 80), self.btn_max_rect)
-        pygame.draw.rect(surface, (80, 200, 80), self.btn_min_rect)
+            pygame.draw.rect(surface, (200, 80, 80), self.btn_close_rect)
+            pygame.draw.rect(surface, (200, 200, 80), self.btn_max_rect)
+            pygame.draw.rect(surface, (80, 200, 80), self.btn_min_rect)
 
         try:
             self.app.draw(self.surface)
@@ -172,5 +199,8 @@ class Window:
             self.surface.fill((100, 0, 0))
             err = self.font.render(str(e), True, (255, 255, 255))
             self.surface.blit(err, (8, 8))
+
+        # Border
+        pygame.draw.rect(surface, (0, 0, 0), self.rect, BORDER)
 
         surface.blit(self.surface, self.content_rect)

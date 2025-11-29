@@ -1,6 +1,6 @@
 import pygame
 
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from kernel import Kernel
@@ -8,8 +8,9 @@ if TYPE_CHECKING:
 
 
 class BaseApp:
-    def __init__(self, kernel: "Kernel", title: str = "App"):
+    def __init__(self, kernel: "Kernel", namespace: str, title: str = "App"):
         self.kernel = kernel
+        self.namespace: str = namespace
         self.title = title
         self.window: Optional["Window"] = None
 
@@ -43,4 +44,7 @@ class BaseApp:
         surface: the main screen surface (blit only inside content_rect).
         content_rect: pygame.Rect indicating the drawable area for the app.
         """
+        pass
+
+    def listen(self, data: dict[str, Any]) -> None:
         pass
