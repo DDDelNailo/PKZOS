@@ -76,12 +76,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--app", type=str, default="logger", help="The app to run on init."
     )
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Enable console output."
-    )
 
     args = parser.parse_args()
-
-    Logger.set_output(args.verbose)
 
     main(args.app)
