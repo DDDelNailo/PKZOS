@@ -1,5 +1,5 @@
 import pygame
-from typing import List, Tuple
+from typing import List
 from app_base import BaseApp
 
 
@@ -13,23 +13,22 @@ class LoggerApp(BaseApp):
     def __init__(self, kernel: "Kernel", namespace: str) -> None:
         super().__init__(kernel, namespace, title="Logger")
         self.lines: List[str] = []
+        self.max_lines = 200
         self.font = pygame.font.Font("fonts/DMMono.ttf", 16)
-        self.bg: Tuple[int, int, int] = (0, 0, 0)
+        self.bg = (0, 0, 0)
 
     def listen(self, data: dict[str, Any]) -> None:
-        t = data.get("type")
-        if not t:
+        if data.get("type") != "log":
             return
 
-        match t:
-            case "log":
-                message = data.get("message")
-                if not message:
-                    return
+        channel = data.get("channel", "")
+        message = data.get("message", "")
+        if not message:
+            return
 
-                self.lines.append(message)
-            case _:
-                pass
+        self.lines.append(f"[{channel}] {message}")
+        if len(self.lines) > self.max_lines:
+            self.lines = self.lines[-self.max_lines :]
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(self.bg)

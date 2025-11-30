@@ -4,7 +4,7 @@ from app_base import BaseApp
 from logger import Logger
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from kernel import Kernel
@@ -17,10 +17,24 @@ class CounterApp(BaseApp):
         self.font = pygame.font.Font(None, 20)
         self.bg: Tuple[int, int, int] = (40, 40, 40)
 
+    def listen(self, data: dict[str, Any]) -> None:
+        if data.get("type") != "set_value":
+            return
+
+        value = data.get("value", "")
+        if not value:
+            return
+
+        self.counter = value
+
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.counter += 1
-            Logger.log("main", "Counter", f"Counter updated to {self.counter}")
+            self.kernel.queue_message(
+                "counter",
+                {"mode": "broadcast", "type": "set_value", "value": self.counter},
+            )
+            Logger.info(f"Counter updated to {self.counter}", "counter")
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(self.bg)

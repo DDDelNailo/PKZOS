@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Optional
+from __future__ import annotations
+from typing import TYPE_CHECKING, Optional, List, Dict, Any
+import time
 
 if TYPE_CHECKING:
     from kernel import Kernel
@@ -6,33 +8,51 @@ if TYPE_CHECKING:
 
 class Logger:
     kernel: Optional["Kernel"] = None
-    messages: list[str] = []
+    buffer: List[Dict[str, Any]] = []
+
+    @staticmethod
+    def format_timestamp() -> str:
+        return time.strftime("%H:%M:%S")
 
     @classmethod
-    def log(cls, file: str, source: str, message: str) -> None:
-        if source:
-            message = f"[{source}] {message}"
+    def log(
+        cls,
+        message: str,
+        channel: str,
+        level: str = "INFO",
+    ) -> None:
+        text = f"{cls.format_timestamp()} [{level}] {message}"
 
-        cls.messages.append(message)
+        cls.buffer.append({"type": "log", "message": text, "channel": channel})
 
-        if cls.kernel is not None:
-            while len(cls.messages) > 0:
-                message = cls.messages.pop(0)
-                data = {"type": "log", "message": message}
-                cls.kernel.queue_messge("logger", data)
-
-    @classmethod
-    def warn(cls, file: str, source: str, message: str) -> None:
-        if source:
-            source = "WARN " + source
-        else:
-            source = "WARN"
-        cls.log(file, source, message)
+        cls.flush(channel)
 
     @classmethod
-    def error(cls, file: str, source: str, message: str) -> None:
-        if source:
-            source = "ERROR " + source
-        else:
-            source = "ERROR"
-        cls.log(file, source, message)
+    def flush(cls, channel: str) -> None:
+        if cls.kernel is None:
+            return
+
+        while cls.buffer:
+            entry = cls.buffer.pop(0)
+            try:
+                cls.kernel.queue_message("logger", entry)
+            except Exception as e:
+                print(f"[LOGGER] Failed to send to kernel ({channel}): {e}")
+                cls.buffer.insert(0, entry)
+                break
+
+    @classmethod
+    def info(cls, msg: str, channel: str) -> None:
+        cls.log(msg, channel, "INFO")
+
+    @classmethod
+    def warn(cls, msg: str, channel: str) -> None:
+        cls.log(msg, channel, "WARN")
+
+    @classmethod
+    def error(cls, msg: str, channel: str) -> None:
+        cls.log(msg, channel, "ERROR")
+
+    @classmethod
+    def debug(cls, msg: str, channel: str) -> None:
+        cls.log(msg, channel, "DEBUG")

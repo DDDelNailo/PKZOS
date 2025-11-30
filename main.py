@@ -7,50 +7,60 @@ from constants import SCREEN_SIZE, SCREEN_CAPTION, FPS, FLAGS
 
 
 def main(app: str) -> None:
-    Logger.log("main", "Pygame", "Initializing")
+    Logger.info("Initializing Pygame", "system")
     pygame.init()
-    Logger.log("main", "Pygame", f"Setting display mode to {SCREEN_SIZE}")
+    Logger.info(f"Display mode set to {SCREEN_SIZE}", "system")
     screen = pygame.display.set_mode(SCREEN_SIZE)
-    Logger.log("main", "Pygame", f"Setting caption caption to {SCREEN_CAPTION}")
+    Logger.info(f"Window caption = '{SCREEN_CAPTION}'", "system")
     pygame.display.set_caption(SCREEN_CAPTION)
-    Logger.log("main", "Pygame", "Initializing clock")
     clock = pygame.time.Clock()
-    Logger.log("main", "Pygame", "Disabling mixer")
+    Logger.info("Initializing clock", "system")
+    Logger.warn("Disabling pygame.mixer (audio disabled)", "system")
     pygame.mixer.quit()
 
-    Logger.log("main", "Kernel", "Initializing")
+    Logger.info("Initializing Kernel", "kernel")
     kernel = Kernel(SCREEN_SIZE)
     Logger.kernel = kernel
+    Logger.info("Kernel successfully started", "kernel")
 
     running = True
 
+    Logger.info(f"Launching main app '{app}' (embedded mode)", "kernel")
     embedded = kernel.launch_app(
         app, size=SCREEN_SIZE, pos=(0, 0), flags=FLAGS.EMBEDDED
     )
+
     if embedded is None:
-        Logger.error("main", "Kernel", "Main embedded app did not launch")
+        Logger.error(f"Failed to launch embedded app '{app}'", "kernel")
         running = False
+    else:
+        running = True
 
     if running:
-        Logger.log("main", "Main", "Initializing event loop")
+        Logger.info("Starting event loop", "system")
+
     while running:
         dt = clock.tick(FPS) / 1000.0
 
         if kernel.find_window_by_id(embedded) is None:
-            Logger.log("main", "Kernel", "Embedded app closed")
+            Logger.warn("Embedded app terminated by user", "kernel")
             running = False
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                Logger.warn("Quit request received", "system")
                 if len(kernel.windows) > 0 and kernel.windows[-1].active:
+                    Logger.debug(f"Closing topmost window", "kernel")
                     kernel.close_window(kernel.windows[-1].id)
                     continue
                 running = False
                 break
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F1:
+                    Logger.debug("Launching 'counter' via F1", "kernel")
                     kernel.launch_app("counter", size=(400, 300), pos=(20, 20))
                 elif event.key == pygame.K_F2:
+                    Logger.debug("Launching 'terminal' via F2", "kernel")
                     kernel.launch_app(
                         "terminal", size=(800, 500), pos=(SCREEN_SIZE[0] - 800 - 20, 20)
                     )
@@ -64,17 +74,20 @@ def main(app: str) -> None:
 
         pygame.display.flip()
 
-    Logger.log("main", "Kernel", "Stopping")
-    Logger.log("main", "Kernel", "Closing all apps")
+    Logger.info("Stopping kernel", "kernel")
+    Logger.info("Closing all apps", "kernel")
+
     for window in kernel.windows:
+        Logger.info(f"Closing window {window.id}", "kernel")
         kernel.close_window(window.id)
 
-    Logger.log("main", "Pygame", "Quitting")
+    Logger.info("Shutting down Pygame", "system")
     pygame.quit()
+    Logger.info("Shutdown complete", "system")
 
 
 if __name__ == "__main__":
-    Logger.log("main", "Main", "PKZ Kernel 0.1")
+    Logger.info("PKZ Kernel v0.1 Starting", "system")
 
     parser = argparse.ArgumentParser(description="A script that greets a user.")
     parser.add_argument(
