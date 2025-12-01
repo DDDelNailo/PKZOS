@@ -4,7 +4,17 @@ from logger import Logger
 from window import Window
 from constants import FLAGS
 from app_base import BaseApp
-from typing import TypedDict, Type, List, Tuple, Optional, Any, Dict
+from typing import (
+    TypedDict,
+    Type,
+    List,
+    Tuple,
+    Optional,
+    Any,
+    Dict,
+    Callable,
+    Generator,
+)
 
 from apps.logger import LoggerApp
 from apps.counter import CounterApp
@@ -29,6 +39,36 @@ class Kernel:
             "logger": {"app": LoggerApp, "running": [], "message_queue": []},
             "terminal": {"app": TerminalApp, "running": [], "message_queue": []},
         }
+
+        Logger.info("Initializing command registry", "kernel")
+        self.command_registry: Dict[
+            str, Callable[["Kernel", list[Any]], Generator[str, None, None]]
+        ] = {}
+
+        self.register_command("help", self.cmd_help)
+        self.register_command("echo", self.cmd_echo)
+
+        Logger.info("Loading custom app commands", "kernel")
+        for registry in self.app_registry.values():
+            cmd_count = registry["app"].register_commands()
+            if cmd_count == 0:
+                continue
+
+            Logger.info(
+                f"Loaded {cmd_count} commands from app {registry['app'].__name__}",
+                "kernel",
+            )
+
+            for name, callback in registry["app"].commands.items():
+                self.register_command(name, callback)
+
+    @staticmethod
+    def cmd_help(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
+        yield "Available: " + ", ".join(kernel.command_registry.keys())
+
+    @staticmethod
+    def cmd_echo(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
+        yield " ".join(args)
 
     def launch_app(
         self,
@@ -198,3 +238,38 @@ class Kernel:
             return
 
         self.app_registry[namespace]["message_queue"].append(data)
+
+    def register_command(
+        self,
+        name: str,
+        handler: Callable[["Kernel", list[Any]], Generator[str, None, None]],
+    ) -> None:
+        if name in self.command_registry:
+            Logger.error(
+                f"Tried to register a command that already exists '{name}'", "kernel"
+            )
+            return
+
+        self.command_registry[name] = handler
+
+    def execute_command(self, raw: str) -> Generator[str, None, None]:
+        if ";" in raw:
+            for snippet in raw.strip().split(";"):
+                yield from self.execute_command(snippet)
+            return
+
+        parts = raw.strip().split()
+        if not parts:
+            return
+
+        name, *args = parts
+        handler = self.command_registry.get(name)
+
+        if handler is None:
+            yield f"Command not found: {name}"
+            return
+
+        try:
+            yield from handler(self, args)
+        except Exception as e:
+            yield f"Error executing {name}: {e}"

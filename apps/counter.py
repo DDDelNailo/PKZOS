@@ -4,7 +4,7 @@ from app_base import BaseApp
 from logger import Logger
 
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Generator
 
 if TYPE_CHECKING:
     from kernel import Kernel
@@ -17,15 +17,34 @@ class CounterApp(BaseApp):
         self.font = pygame.font.Font(None, 20)
         self.bg: Tuple[int, int, int] = (40, 40, 40)
 
+    @classmethod
+    def register_commands(cls) -> int:
+        cls.commands["count"] = cls.cmd_count
+
+        return 1
+
+    @classmethod
+    def cmd_count(cls, kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
+        kernel.queue_message(
+            "counter",
+            {"mode": "broadcast", "type": "inc_value"},
+        )
+        yield f"Increased counters by one"
+
     def listen(self, data: dict[str, Any]) -> None:
-        if data.get("type") != "set_value":
-            return
+        type = data.get("type")
 
-        value = data.get("value", "")
-        if not value:
-            return
+        match type:
+            case "set_value":
+                value = data.get("value", "")
+                if not value:
+                    return
 
-        self.counter = value
+                self.counter = value
+            case "inc_value":
+                self.counter += 1
+            case _:
+                return
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:

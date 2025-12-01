@@ -15,6 +15,7 @@ class TerminalApp(BaseApp):
         super().__init__(kernel, namespace, title="Terminal")
         self.lines: list[str] = []
         self.current: str = ""
+        self.current_prefix: str = "[root@pkzos /]$"
 
         self.max_lines: int = 200
         self.font = pygame.font.Font("fonts/DMMono.ttf", 18)
@@ -24,10 +25,16 @@ class TerminalApp(BaseApp):
         self.cursor_state: bool = True
 
     def send(self) -> None:
-        self.lines.append(self.current)
+        text = self.current.strip()
+        self.lines.append(self.current_prefix + " " + text)
         self.current = ""
         if len(self.lines) > self.max_lines:
             self.lines = self.lines[-self.max_lines :]
+
+        output = self.kernel.execute_command(text)
+        if output:
+            for line in output:
+                self.lines.append(str(line))
 
     def handle_event(self, event: Event) -> None:
         if event.type != pygame.KEYDOWN:
@@ -54,7 +61,12 @@ class TerminalApp(BaseApp):
         if self.cursor_time > 500:
             self.cursor_state = not self.cursor_state
             self.cursor_time = 0
-        display_current = self.current + ("|" if self.cursor_state else "")
+        display_current = (
+            self.current_prefix
+            + " "
+            + self.current
+            + ("|" if self.cursor_state else "")
+        )
 
         for line in reversed(self.lines + [display_current]):
             surf = self.font.render(line, True, (220, 220, 220))
@@ -63,4 +75,3 @@ class TerminalApp(BaseApp):
             y -= font_height + 4
             if y < 0:
                 break
-

@@ -1,6 +1,6 @@
 import pygame
 
-from typing import Optional, TYPE_CHECKING, Any
+from typing import Optional, TYPE_CHECKING, Any, Dict, Callable, Generator
 
 if TYPE_CHECKING:
     from kernel import Kernel
@@ -8,11 +8,22 @@ if TYPE_CHECKING:
 
 
 class BaseApp:
+    commands: Dict[str, Callable[["Kernel", list[Any]], Generator[str, None, None]]] = (
+        {}
+    )
+
     def __init__(self, kernel: "Kernel", namespace: str, title: str = "App"):
         self.kernel = kernel
         self.namespace: str = namespace
         self.title = title
         self.window: Optional["Window"] = None
+
+    @classmethod
+    def register_commands(cls) -> int:
+        """
+        Called at kernel initialization to register custom app commands.
+        """
+        return 0
 
     def on_launch(self) -> None:
         """
