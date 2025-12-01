@@ -27,6 +27,16 @@ class AppRegistry(TypedDict):
     message_queue: List[Dict[str, Any]]
 
 
+class BaseCommands:
+    @staticmethod
+    def cmd_help(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
+        yield "Available: " + ", ".join(kernel.command_registry.keys())
+
+    @staticmethod
+    def cmd_echo(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
+        yield " ".join(args)
+
+
 class Kernel:
     def __init__(self, screen_size: Tuple[int, int]) -> None:
         self.windows: list[Window] = []
@@ -45,8 +55,8 @@ class Kernel:
             str, Callable[["Kernel", list[Any]], Generator[str, None, None]]
         ] = {}
 
-        self.register_command("help", self.cmd_help)
-        self.register_command("echo", self.cmd_echo)
+        self.register_command("help", BaseCommands.cmd_help)
+        self.register_command("echo", BaseCommands.cmd_echo)
 
         Logger.info("Loading custom app commands", "kernel")
         for registry in self.app_registry.values():
@@ -61,14 +71,6 @@ class Kernel:
 
             for name, callback in registry["app"].commands.items():
                 self.register_command(name, callback)
-
-    @staticmethod
-    def cmd_help(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
-        yield "Available: " + ", ".join(kernel.command_registry.keys())
-
-    @staticmethod
-    def cmd_echo(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
-        yield " ".join(args)
 
     def launch_app(
         self,
