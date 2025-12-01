@@ -1,5 +1,7 @@
+import os
 import pygame
 import itertools
+import importlib
 from logger import Logger
 from window import Window
 from constants import FLAGS
@@ -12,13 +14,9 @@ from typing import (
     Optional,
     Any,
     Dict,
-    Callable,
     Generator,
 )
-
-from apps.logger import LoggerApp
-from apps.counter import CounterApp
-from apps.terminal import TerminalApp
+from commands import CommandType, InternalCmds
 
 
 class AppRegistry(TypedDict):
@@ -27,36 +25,21 @@ class AppRegistry(TypedDict):
     message_queue: List[Dict[str, Any]]
 
 
-class BaseCommands:
-    @staticmethod
-    def cmd_help(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
-        yield "Available: " + ", ".join(kernel.command_registry.keys())
-
-    @staticmethod
-    def cmd_echo(kernel: "Kernel", args: list[Any]) -> Generator[str, None, None]:
-        yield " ".join(args)
-
-
 class Kernel:
     def __init__(self, screen_size: Tuple[int, int]) -> None:
         self.windows: list[Window] = []
         self.id_counter = itertools.count(1)
         self.screen_width, self.screen_height = screen_size
 
+        self.app_registry: dict[str, AppRegistry] = {}
+        self.command_registry: Dict[str, CommandType] = {}
+
         Logger.info("Initializing app registry", "kernel")
-        self.app_registry: dict[str, AppRegistry] = {
-            "counter": {"app": CounterApp, "running": [], "message_queue": []},
-            "logger": {"app": LoggerApp, "running": [], "message_queue": []},
-            "terminal": {"app": TerminalApp, "running": [], "message_queue": []},
-        }
+        self.load_apps()
 
         Logger.info("Initializing command registry", "kernel")
-        self.command_registry: Dict[
-            str, Callable[["Kernel", list[Any]], Generator[str, None, None]]
-        ] = {}
-
-        self.register_command("help", BaseCommands.cmd_help)
-        self.register_command("echo", BaseCommands.cmd_echo)
+        for name, cmd in InternalCmds.get_cmds():
+            self.register_command(name, cmd)
 
         Logger.info("Loading custom app commands", "kernel")
         for registry in self.app_registry.values():
@@ -71,6 +54,34 @@ class Kernel:
 
             for name, callback in registry["app"].commands.items():
                 self.register_command(name, callback)
+
+    def load_apps(self) -> None:
+        apps_dir: str = "apps"
+
+        for name in os.listdir(apps_dir):
+            path = os.path.join(apps_dir, name)
+
+            if not os.path.isdir(path) or not os.path.isfile(
+                os.path.join(path, "__init__.py")
+            ):
+                continue
+
+            try:
+                module = importlib.import_module(f"{apps_dir}.{name}")
+                if hasattr(module, "APP"):
+                    # if not issubclass(module.APP, BaseApp):
+                    #     raise TypeError("App is not a subclass of AppBase")
+
+                    self.app_registry[name] = {
+                        "app": module.APP,
+                        "running": [],
+                        "message_queue": [],
+                    }
+                    Logger.info(f"App loaded: '{name}'", "appmng")
+                else:
+                    Logger.warn(f"No APP found in '{name}'", "appmng")
+            except Exception as e:
+                Logger.error(f"Failed to load app '{name}': {e}", "appmng")
 
     def launch_app(
         self,
@@ -244,7 +255,7 @@ class Kernel:
     def register_command(
         self,
         name: str,
-        handler: Callable[["Kernel", list[Any]], Generator[str, None, None]],
+        handler: CommandType,
     ) -> None:
         if name in self.command_registry:
             Logger.error(

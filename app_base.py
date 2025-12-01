@@ -1,6 +1,6 @@
 import pygame
-
-from typing import Optional, TYPE_CHECKING, Any, Dict, Callable, Generator
+from commands import CommandType
+from typing import Optional, TYPE_CHECKING, Any, Dict
 
 if TYPE_CHECKING:
     from kernel import Kernel
@@ -8,9 +8,7 @@ if TYPE_CHECKING:
 
 
 class BaseApp:
-    commands: Dict[str, Callable[["Kernel", list[Any]], Generator[str, None, None]]] = (
-        {}
-    )
+    commands: Dict[str, CommandType] = {}
 
     def __init__(self, kernel: "Kernel", namespace: str, title: str = "App"):
         self.kernel = kernel
